@@ -2,6 +2,7 @@ import sharp from "sharp";
 import cloudinary from "../config/cloudinary.js";
 import { Post } from "../models/post.model.js";
 import { User } from "../models/user.model.js";
+import {Comment} from "../models/comment.model.js";
 
 
 // Add New Post Controller
@@ -105,46 +106,83 @@ export const addNewPost = async (req, res) => {
         )
     }
 }
-
-//yha sirf hmari posts ayyengi jaisa ki ye mri profile hai bs
-//suppose if main log-in honn to sirf meri posthi display hoeyngi
-export const getUserPost = async (req, res) => {
+//yha feed ke liye saari posts fetch kr rhe hai
+//hmpe jitni bhi posts thi saari display krdi
+export const getAllPost = async (req, res) => {
     try {
-
-        const authorId = req.id;
-        const posts = (await Post.find({
-                author: authorId
-            }).sort({
-                createdAt: -1
-            })).populate({
+        const posts = await Post.find()
+        .sort({ createdAt: -1 })
+        .populate({ path: 'author', select: 'username profilePicture' })
+        .populate({
+            path: 'comments',
+            sort: { createdAt: -1 },
+            populate: {
                 path: 'author',
-                select: 'username  profilePicture'
-            })
-            .populate({
-                path: 'comments',
-                sort: {
-                    createdAt: -1 //latest appears first
-                },
-                populate: {
-                    path: 'author',
-                    select: 'username profilePicture'
-                }
-            });
+                select: 'username profilePicture'
+            }
+        });
 
-        console.log("apni posst fetched successfully");
-        res.status(200).json({
-            success: true,
-            message: "posts fetched , user ki",
-            posts
+        console.log("all posts for feed fetched sucessfully");
+        return res.status(200).json({
+            posts,
+            success: true
         })
     } catch (err) {
-        console.log("An error occured while fetching the posts of the some otheruser");
+        console.log("an error occured while fetching the posts of ourselves");
         console.error(err.message);
 
-        res.status(500).json({ //internal server error
-            success: false,
-            message: "unable to fetch the posts of the user"
+        res.status(500).json({
+            success : false,
+            message : "unable to fetch the ourselve posts",
+            error : err.message
         })
+    }
+};
+
+// Function to get all posts for a specific user
+// yha sirf hmari posts ayyengi jaisa ki ye mri profile hai bs
+// suppose if main log-in honn to sirf meri posthi display hoeyngi
+
+//populate : -When a document contains references (ObjectIds) to other documents, populate allows you to fetch the actual content of those related documents
+export const getUserPost = async (req, res) => {
+    try {
+        const authorId = req.id;
+
+        // Fetch posts where the 'author' field matches the authorId from the request
+        // Sort the posts by 'createdAt : -1' in descending order (latest posts first) 
+        const posts = await Post.find({ author: authorId })
+            .sort({ createdAt: -1 })
+            .populate({
+                path: 'author', //jisne post bnayi hai
+                select: 'username profilePicture' //uska username and picture ko populate kro sirf
+            })
+            .populate({
+                path: 'comments', //post pe kitne commenst hai
+                options: { sort: { createdAt: -1 } },  
+                populate: {
+                    path: 'author', //uska author kon hai
+                    select: 'username profilePicture' //uska username-profile picture ko fetch kro
+                }
+            })
+            .populate({
+                path: 'likes',  //post pe  kitne likes hai
+                select: 'username profilePicture'   //jinhone likes kiye hai usna username and profile-pcture populate kro
+            });
+
+        console.log("Posts fetched successfully");
+        return res.status(200).json({
+            posts,
+            success: true
+        });
+    } catch (err) {
+        console.log("An error occurred while fetching the posts of some other user");
+        console.error(err.message);
+
+        res.status(500).json({
+            success: false,
+            message: "Unable to fetch the posts of other user",
+            error: err.message
+        });
     }
 }
 
