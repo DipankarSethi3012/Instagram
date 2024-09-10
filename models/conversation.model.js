@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 
 const conversationSchema = new mongoose.Schema({
@@ -10,5 +11,6 @@ const conversationSchema = new mongoose.Schema({
         ref: 'Message'
     }]
 })
+
 
 export const  Conversation = mongoose.model('Conversation', conversationSchema);
